@@ -1,0 +1,29 @@
+[project]
+name = "zealous"
+version = "0.1.0"
+description = "AI bots collection"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ddgs>=9.11.2",
+    "discord-ext-voice-recv>=0.5.2a179",
+    "discord-py>=2.7.1",
+    "discord-voice>=0.0.0",
+    "ollama>=0.6.1",
+    "numpy>=2.4.2",
+    "piper>=0.15.0",
+    "piper-tts>=1.4.1",
+    "pygame>=2.6.1",
+    "sounddevice>=0.5.5",
+    "websockets>=16.0",
+    "faster-whisper>=1.2.1",
+    "pynacl>=1.5.0",
+    "dotenv>=0.9.9",
+    "scipy>=1.17.1",
+    "dave-py>=0.1.2",
+    "requests>=2.32.5",
+    "duckduckgo-search>=8.1.1",
+    "psutil>=7.2.2",
+    "pyyaml>=6.0.3",
+    "flask>=3.1.3",
+]

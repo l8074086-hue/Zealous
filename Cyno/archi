@@ -1,0 +1,60 @@
+# --- Add these to your existing imports if not already there ---
+import discord
+from discord.ext import commands
+
+# --- Inside your Bot Setup section (around line 140) ---
+intents = discord.Intents.default()
+intents.message_content = True
+intents.guilds = True  # MANDATORY for reading channel structure
+bot = commands.Bot(command_prefix="%", intents=intents)
+
+# --- Add this command anywhere with your other bot commands ---
+
+@bot.command()
+async def architecture(ctx):
+    """Generates a text-based tactical map of the server structure."""
+    if not ctx.guild:
+        return await ctx.send("`[ERROR]: Command restricted to Guild environments.`")
+
+    async with ctx.typing():
+        header = f"```\n[MISSION LOG]: SERVER TOPOLOGY - {ctx.guild.name.upper()}\n"
+        header += "="*40 + "\n"
+        
+        body = ""
+        # Sort categories by their actual position in Discord
+        categories = sorted(ctx.guild.categories, key=lambda c: c.position)
+        
+        for category in categories:
+            body += f"\n📁 [SEC]: {category.name.upper()}\n"
+            
+            # Sort channels within the category
+            channels = sorted(category.channels, key=lambda c: c.position)
+            for channel in channels:
+                if isinstance(channel, discord.TextChannel):
+                    icon = "💬"
+                elif isinstance(channel, discord.VoiceChannel):
+                    icon = "🔊"
+                elif isinstance(channel, discord.StageChannel):
+                    icon = "🎭"
+                elif isinstance(channel, discord.ForumChannel):
+                    icon = "📝"
+                else:
+                    icon = "📄"
+                
+                body += f"    ├── {icon} {channel.name}\n"
+
+        footer = "\n" + "="*40 + "\n[STATUS]: TOPOLOGY EXPORT COMPLETE.```"
+        
+        # Discord has a 2000 char limit; if the server is massive, we split it
+        full_output = header + body + footer
+        
+        if len(full_output) > 1900:
+            # Save to file if it's too big for a message
+            filename = f"topology_{ctx.guild.id}.txt"
+            with open(filename, "w", encoding="utf-8") as f:
+                f.write(full_output.replace("```", ""))
+            await ctx.send("`[SYSTEM]: Topology exceeds datalink capacity. Transmitting as file...`", 
+                           file=discord.File(filename))
+            os.remove(filename)
+        else:
+            await ctx.send(full_output)

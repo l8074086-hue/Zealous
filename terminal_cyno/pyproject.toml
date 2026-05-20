@@ -1,0 +1,17 @@
+[project]
+name = "cyno"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ddgs>=9.10.0",
+    "duckduckgo-search>=8.1.1",
+    "faster-whisper>=1.2.1",
+    "numpy>=2.4.2",
+    "ollama>=0.6.1",
+    "piper-tts>=1.4.1",
+    "psutil>=7.2.2",
+    "pyyaml>=6.0.3",
+    "sounddevice>=0.5.5",
+]

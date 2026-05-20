@@ -1,0 +1,18 @@
+[project]
+name = "cyno"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ddgs>=9.11.2",
+    "discord-ext-voice-recv>=0.5.2a179",
+    "discord-py>=2.7.1",
+    "discord-voice>=0.0.0",
+    "numpy>=2.4.2",
+    "pathlib>=1.0.1",
+    "piper>=0.15.0",
+    "piper-tts>=1.4.1",
+    "pygame>=2.6.1",
+    "sounddevice>=0.5.5",
+]
