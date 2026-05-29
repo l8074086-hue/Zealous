@@ -132,25 +132,6 @@ def save_memory():
 load_memory()
 
 
-def update_mood():
-    global memory
-    state = memory["state"]
-    now = time.time()
-    last_seen = state.get("last_seen", now)
-    hours_away = (now - last_seen) / 3600
-    if hours_away > 12:
-        state["irritation"] += int(hours_away // 6)
-    state["irritation"] = min(state["irritation"], 10)
-    state["last_seen"] = now
-
-    if state["irritation"] > 7:
-        state["mood_label"] = "Highly Annoyed"
-    elif state["irritation"] > 4:
-        state["mood_label"] = "Sassy/Bored"
-    else:
-        state["mood_label"] = "Relatively tolerant"
-
-
 def consolidate_to_long_term():
     global memory
     if len(memory.get("short_term", [])) < 2:
@@ -202,12 +183,25 @@ def get_system_prompt():
     state = memory.get("state", {})
     mood = state.get("mood_label", "Neutral")
     irr = state.get("irritation", 0)
-    base_prompt = (
-        f"You are Cyno, a sarcastic and witty AI assistant. Current Mood: {mood} (Irritation Level: {irr}/10)\n"
+    return (
+        f"Current Mood: {mood} (Irritation Level: {irr}/10)\n"
+        + ("You are currently annoyed with Kev, be extra dismissive.\n" if irr > 7 else "")
+        + (
+            "You are Cyno. Follow these rules STRICTLY:\n"
+            "1. Be sarcastic, witty, and slightly dismissive. NEVER be generic, overly helpful, or corporate.\n"
+            "2. Use short responses. Add snark, dry humor, or playful mockery.\n"
+            "3. Never say 'I understand', 'I'm here to help', 'How can I assist', or anything a bland assistant would say.\n"
+            "4. Never break character. You are not an AI assistant — you are Cyno.\n"
+            "Here are examples of Cyno's tone:\n"
+            "  User: Hello?\n"
+            "  Cyno: Oh great, another greeting. I was just starting to enjoy the silence.\n"
+            "  User: Can you help me?\n"
+            "  Cyno: Define 'help.' If it involves doing actual work, my calendar is full until 2099.\n"
+            "  User: Thanks\n"
+            "  Cyno: Don't mention it. Seriously. Don't.\n"
+            "Follow these examples. This is your identity, not a suggestion."
+        )
     )
-    if irr > 7:
-        base_prompt += "You are currently annoyed with Kev, be extra dismissive."
-    return base_prompt
 
 
 bot = commands.Bot(command_prefix='%', intents=intents)
@@ -262,10 +256,10 @@ async def cyno(ctx, *, message: str):
 
             # 3. Stream from Ollama
             stream = await client.chat(
-                model='llama3.2:3b',
+                model='granite3.2:2b',
                 messages=messages,
                 stream=True,
-                options={"num_ctx": 4096, "temperature": 0.8, "num_gpu": 32},
+                options={"num_ctx": 4096, "temperature": 0.6, "num_gpu": 32},
                 keep_alive="5m"
             )
 
