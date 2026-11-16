@@ -1,0 +1,15 @@
+[project]
+name = "titan-bot"
+version = "0.1.0"
+description = "T-7274 Vanguard-class Titan Discord bot with TTS"
+requires-python = ">=3.12"
+dependencies = [
+    "discord-py>=2.7.1",
+    "discord-ext-voice-recv>=0.5.2a179",
+    "ollama>=0.6.1",
+    "python-dotenv>=1.0.0",
+    "piper-tts>=1.4.1",
+    "numpy>=2.4.2",
+    "sounddevice>=0.5.5",
+    "duckduckgo-search>=8.1.1",
+]

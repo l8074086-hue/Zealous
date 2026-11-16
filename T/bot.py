@@ -14,7 +14,6 @@ from dotenv import load_dotenv
 
 from glados_tts import GLaDOS
 
-# --- Initial Setup ---
 load_dotenv()
 TOKEN = os.getenv("T_TOKEN")
 BASE_DIR = Path(__file__).resolve().parent
@@ -35,7 +34,6 @@ def web_search(query):
         return [f"Search error: {e}"]
 
 
-# Initialize GLaDOS and FORCE voice ON
 glados_engine = GLaDOS(GLADOS_PATH)
 glados_engine.enabled = True
 if not TOKEN:
@@ -51,21 +49,16 @@ class MyReceiver(voice_recv.AudioSink):
         super().__init__()
 
     def wants_opus(self):
-        return False  # False gives you raw PCM audio (better for STT)
+        return False
 
     def write(self, user, data):
-        # This is where the audio bytes land
-        # 'user' is the person speaking, 'data' is the audio data
         if data.pcm:
-            # For debugging: just print the length of the audio chunk
             print(f"Receiving {len(data.pcm)} bytes from {user}")
 
     def cleanup(self):
-        # Python complained because this was missing!
         print("Cleaning up the audio sink...")
 
 
-# --- Data Management ---
 def load_memory():
     if MEMORY_FILE.exists():
         try:
@@ -98,15 +91,13 @@ def save_memory():
 
 
 def clean_for_glados(text):
-    # Remove Discord formatting and non-speakable characters
     text = re.sub(r"<a?:\w+:\d+>", "", text)
     text = re.sub(r"\*.*?\*", "", text)
     text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
-    text = re.sub(r"[_]", " ", text)  # Remove underscores (fixes username issues)
+    text = re.sub(r"[_]", " ", text)
     return text.strip()
 
 
-# --- Titan Logic ---
 async def update_link_stability(user_text):
     state = memory["state"]
     now = time.time()
@@ -177,7 +168,6 @@ async def consolidate_memory():
         logger.error(f"Consolidation failed: {e}")
 
 
-# --- Bot Commands ---
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="%", intents=intents)
@@ -215,7 +205,6 @@ async def cyno(ctx, *, message: str):
             msgs.append({"role": "user", "content": turn["user"]})
             msgs.append({"role": "assistant", "content": turn["cyno"]})
 
-        # REMOVED ctx.author.name so he doesn't detect "unknown identifiers"
         msgs.append({"role": "user", "content": message})
 
         try:
@@ -233,7 +222,6 @@ async def cyno(ctx, *, message: str):
 
             await placeholder.edit(content=full_response[:2000])
 
-            # Check if Cyno wants to search
             search_match = re.search(
                 r"SEARCH:\s*(.+?)(?:\n|$)", full_response, re.IGNORECASE
             )
@@ -242,7 +230,6 @@ async def cyno(ctx, *, message: str):
                 logger.info(f"Pilot requested search: {query}")
                 results = web_search(query)
 
-                # Get final response with search results
                 msgs.append({"role": "assistant", "content": full_response})
                 msgs.append(
                     {
@@ -267,18 +254,15 @@ async def cyno(ctx, *, message: str):
 
                 await placeholder.edit(content=full_response[:2000])
 
-            # --- Discord Voice Protocol (Linux) ---
             if ctx.voice_client and ctx.voice_client.is_connected():
                 cleaned = clean_for_glados(full_response)
 
-                # FIX: Match the method name to 'get_audio_stream'
                 audio_stream = glados_engine.get_audio_stream(cleaned)
 
                 if audio_stream:
                     if ctx.voice_client.is_playing():
                         ctx.voice_client.stop()
 
-                    # We tell FFmpeg to read raw s16le (16-bit) audio at 22050Hz
                     source = discord.FFmpegPCMAudio(
                         audio_stream,
                         pipe=True,
@@ -286,6 +270,7 @@ async def cyno(ctx, *, message: str):
                         before_options="-f s16le -ar 22050 -ac 1",
                     )
                     ctx.voice_client.play(source)
+
             memory["short_term"].append({"user": message, "cyno": full_response})
             await update_link_stability(message)
 
@@ -314,18 +299,14 @@ async def listen(ctx):
     if not ctx.author.voice:
         return await ctx.send("You need to be in a voice channel first!")
 
-    # Check if we are already connected to voice
     vc = ctx.voice_client
 
     if not vc:
-        # If not connected, connect using the VoiceRecvClient
         vc = await ctx.author.voice.channel.connect(cls=voice_recv.VoiceRecvClient)
     elif not isinstance(vc, voice_recv.VoiceRecvClient):
-        # If connected but NOT with voice_recv, move and upgrade the client
         await vc.disconnect()
         vc = await ctx.author.voice.channel.connect(cls=voice_recv.VoiceRecvClient)
 
-    # Now start listening
     if not vc.is_listening():
         vc.listen(MyReceiver())
         await ctx.send("👂 I'm listening now!")
@@ -335,22 +316,19 @@ async def listen(ctx):
 
 @bot.command()
 async def architecture(ctx):
-    """Generates a text-based tactical map of the server structure."""
     if not ctx.guild:
         return await ctx.send("`[ERROR]: Command restricted to Guild environments.`")
 
     async with ctx.typing():
         header = f"```\n[MISSION LOG]: SERVER TOPOLOGY - {ctx.guild.name.upper()}\n"
         header += "="*40 + "\n"
-        
+
         body = ""
-        # Sort categories by their actual position in Discord
         categories = sorted(ctx.guild.categories, key=lambda c: c.position)
-        
+
         for category in categories:
             body += f"\n📁 [SEC]: {category.name.upper()}\n"
-            
-            # Sort channels within the category
+
             channels = sorted(category.channels, key=lambda c: c.position)
             for channel in channels:
                 if isinstance(channel, discord.TextChannel):
@@ -363,24 +341,23 @@ async def architecture(ctx):
                     icon = "📝"
                 else:
                     icon = "📄"
-                
+
                 body += f"    ├── {icon} {channel.name}\n"
 
         footer = "\n" + "="*40 + "\n[STATUS]: TOPOLOGY EXPORT COMPLETE.```"
-        
-        # Discord has a 2000 char limit; if the server is massive, we split it
+
         full_output = header + body + footer
-        
+
         if len(full_output) > 1900:
-            # Save to file if it's too big for a message
             filename = f"topology_{ctx.guild.id}.txt"
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(full_output.replace("```", ""))
-            await ctx.send("`[SYSTEM]: Topology exceeds datalink capacity. Transmitting as file...`", 
+            await ctx.send("`[SYSTEM]: Topology exceeds datalink capacity. Transmitting as file...`",
                            file=discord.File(filename))
             os.remove(filename)
         else:
             await ctx.send(full_output)
+
 
 @bot.command()
 async def status(ctx):

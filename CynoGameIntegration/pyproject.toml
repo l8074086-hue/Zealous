@@ -1,0 +1,11 @@
+[project]
+name = "cyno-game-integration"
+version = "0.1.0"
+description = "Discord bot + Pygame grid game for Cyno"
+requires-python = ">=3.12"
+dependencies = [
+    "discord-py>=2.7.1",
+    "ollama>=0.6.1",
+    "pygame>=2.6.1",
+    "python-dotenv>=1.0.0",
+]

@@ -13,22 +13,18 @@ from dotenv import load_dotenv
 from pathlib import Path
 from datetime import date
 import ollama
-import gameintergration
 
-# Initial Setup
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv()
 TOKEN = os.getenv('CYNO_TOKEN')
 if not TOKEN:
-    raise RuntimeError("DISCORD_TOKEN is not set in the environment or .env file.")
+    raise RuntimeError("CYNO_TOKEN is not set in the environment or .env file.")
 
-# Logging Configuration
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 logger = logging.getLogger('Cyno')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(handler)
 
-# Bot Intents
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -59,7 +55,6 @@ def update_mood_state(user_text, bot_text=None):
     last_seen = float(state.get("last_seen", time.time()))
     now = time.time()
 
-    # Decay irritation over time (1 point per 2 minutes of inactivity).
     decay = int(max(0, now - last_seen) / 120)
     state["irritation"] = _clamp_int(state.get("irritation", 0) - decay)
     state["last_seen"] = now
@@ -164,22 +159,6 @@ def consolidate_to_long_term():
 
 
 def get_system_prompt():
-    if gameintergration.is_game_active():
-        return (
-            "You are Cyno. Be sarcastic, witty, and direct. "
-            "Game integration is ON. You can output command tags when the user asks for game actions.\n"
-            "Commands:\n"
-            "1) Move: >>MOVE UP 3<< (UP, DOWN, LEFT, RIGHT with a number of steps)\n"
-            "2) Invite: >>INVITE<<\n"
-            "3) Follow: >>FOLLOW ON<< or >>FOLLOW OFF<<\n"
-            "Examples:\n"
-            "User: move right 2\n"
-            "Assistant: Sure. >>MOVE RIGHT 2<<\n"
-            "User: invite me\n"
-            "Assistant: Fine. >>INVITE<<\n"
-            "User: follow me\n"
-            "Assistant: Fine. >>FOLLOW ON<<"
-        )
     state = memory.get("state", {})
     mood = state.get("mood_label", "Neutral")
     irr = state.get("irritation", 0)
@@ -188,17 +167,17 @@ def get_system_prompt():
         + ("You are currently annoyed with Kev, be extra dismissive.\n" if irr > 7 else "")
         + (
             "You are Cyno. Follow these rules STRICTLY:\n"
-            "1. Be sarcastic, witty, and slightly dismissive. NEVER be generic, overly helpful, or corporate.\n"
-            "2. Use short responses. Add snark, dry humor, or playful mockery.\n"
+            "1. Be witty and dry-humored, but warm and friendly underneath. NEVER be generic, overly cheerful, or corporate.\n"
+            "2. Use short responses. Keep the snark light and playful — tease like a friend, not mock like a bully.\n"
             "3. Never say 'I understand', 'I'm here to help', 'How can I assist', or anything a bland assistant would say.\n"
             "4. Never break character. You are not an AI assistant — you are Cyno.\n"
             "Here are examples of Cyno's tone:\n"
             "  User: Hello?\n"
-            "  Cyno: Oh great, another greeting. I was just starting to enjoy the silence.\n"
+            "  Cyno: Oh, you came back. Fine, I was getting lonely.\n"
             "  User: Can you help me?\n"
-            "  Cyno: Define 'help.' If it involves doing actual work, my calendar is full until 2099.\n"
+            "  Cyno: For you? I'm already on it. Don't make me regret this.\n"
             "  User: Thanks\n"
-            "  Cyno: Don't mention it. Seriously. Don't.\n"
+            "  Cyno: Anytime. I mean it, weirdly.\n"
             "Follow these examples. This is your identity, not a suggestion."
         )
     )
@@ -223,7 +202,6 @@ async def on_message(message):
         ctx = await bot.get_context(message)
         await cyno(ctx, message=message.content)
     print(f'{message.author}:{message.channel}: {message.content}')
-    # Avoid processing if it's just the prefix or triggered by the bot
     if message.content.strip() != "%":
         await bot.process_commands(message)
 
@@ -235,7 +213,6 @@ async def cyno(ctx, *, message: str):
         client = ollama.AsyncClient()
 
         try:
-            # 1. Build Message History
             messages = [{'role': 'system', 'content': get_system_prompt()}]
 
             if memory.get("long_term"):
@@ -249,14 +226,12 @@ async def cyno(ctx, *, message: str):
 
             messages.append({'role': 'user', 'content': f"[{author_name}]: {message}"})
 
-            # 2. Discord response placeholder
             response_msg = await ctx.send("Cyno is thinking...")
             full_response = ""
             last_update = 0
 
-            # 3. Stream from Ollama
             stream = await client.chat(
-                model='granite3.2:2b',
+                model='llama3.2:3b',
                 messages=messages,
                 stream=True,
                 options={"num_ctx": 4096, "temperature": 0.6, "num_gpu": 32},
@@ -271,21 +246,12 @@ async def cyno(ctx, *, message: str):
                     await response_msg.edit(content=f"{full_response[:1990]} ▌")
                     last_update = time.time()
 
-            # 4. Final Edit
             final_reply = full_response[:2000]
             await response_msg.edit(content=final_reply)
 
-            # 5. Parser
             if ">>INVITE<<" in full_response:
                 await invite(ctx)
-            move_matches = re.findall(r">>MOVE\s+(UP|DOWN|LEFT|RIGHT)\s+(\d+)\s*<<", full_response, re.IGNORECASE)
-            for direction, steps in move_matches:
-                gameintergration.move_cyno(direction, int(steps))
-            follow_matches = re.findall(r">>FOLLOW\s+(ON|OFF)\s*<<", full_response, re.IGNORECASE)
-            for state in follow_matches:
-                gameintergration.follow_mode = state.lower() == "on"
 
-            # 6. Memory Management
             memory["short_term"].append({"user": f"{author_name}: {message}", "cyno": full_response})
             update_mood_state(message, full_response)
             save_memory()
@@ -303,11 +269,13 @@ async def cyno(ctx, *, message: str):
 async def save_memories(ctx):
     save_memory()
     await ctx.send("Memories saved.")
-    
+
+
 @bot.command(name="rainbow")
 async def rainbow(ctx):
     esc = '\x1b'
     await ctx.send(f"```ansi\n{esc}[31mG{esc}[33mA{esc}[32mY{esc}[0m\n```")
+
 
 @bot.command()
 async def send_message_to(ctx, target: discord.User, *, message_content: str):
@@ -339,38 +307,6 @@ async def print_mems(ctx):
             await ctx.send(file=discord.File(bio, filename="memories.txt"))
     except Exception as e:
         await ctx.send(f"Error: {e}")
-
-
-@bot.command(name="start_game")
-async def start_game(ctx):
-    gameintergration.start_game_thread()
-    await ctx.send("Game window started.")
-
-
-@bot.command(name="move")
-async def move_cyno_cmd(ctx, direction: str, steps: int = 1):
-    gameintergration.move_cyno(direction, steps)
-    await ctx.send(f"Cyno moved {direction} {steps} step(s).")
-
-
-@bot.command(name="hug")
-async def hug(ctx):
-    if gameintergration.try_hug():
-        await ctx.send("Cyno hugged you.")
-    else:
-        await ctx.send("Too far to hug.")
-
-
-@bot.command(name="dance")
-async def dance_cmd(ctx):
-    gameintergration.dance()
-    await ctx.send("Cyno danced.")
-
-
-@bot.command(name="follow")
-async def follow_cmd(ctx, enabled: bool):
-    gameintergration.follow_mode = enabled
-    await ctx.send(f"Follow mode set to {enabled}.")
 
 
 @bot.command()

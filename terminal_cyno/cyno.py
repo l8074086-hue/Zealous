@@ -12,8 +12,8 @@ from piper.voice import PiperVoice
 
 # --- Config & Paths ---
 voice_path, voice_config = (
-    "/home/leo/Projects/terminal_cyno/glados.onnx",
-    "/home/leo/Projects/terminal_cyno/glados.onnx.json",
+    "/home/astronaut/Projects/Python/Zealous/terminal_cyno/glados.onnx",
+    "/home/astronaut/Projects/Python/Zealous/terminal_cyno/glados.onnx.json",
 )
 VOICE = PiperVoice.load(voice_path, voice_config)
 SAMPLE_RATE = VOICE.config.sample_rate
@@ -80,7 +80,7 @@ def update_mood(user_text, mem):
     prompt = 'What does Cyno feel? Return ONLY JSON: {"irritation": 0-10, "mood": "Neutral|Sassy|Hostile|Pleased"}.'
     try:
         res = ollama.chat(
-            model="granite3.2:2b",
+            model="llama3.2:3b",
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": user_text},
@@ -187,7 +187,7 @@ def run_cyno():
         mem["short_term"].append({"u": user_input, "c": reply})
         if len(mem["short_term"]) > 10:
             sum_res = ollama.chat(
-                model="granite3.2:2b",
+                model="llama3.2:3b",
                 messages=[
                     {
                         "role": "user",

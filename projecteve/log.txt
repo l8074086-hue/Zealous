@@ -1,0 +1,3 @@
+2026/03/02 14:46:00 Micro started
+2026/03/02 14:46:00 Warning: during screen initialization: empty term name
+2026/03/02 14:46:00 Falling back to TERM=xterm-256color
